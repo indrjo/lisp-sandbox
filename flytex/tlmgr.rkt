@@ -31,8 +31,5 @@
 
 ;; Install all the packages in a given list.
 (define (tlmgr-install packages)
-  (for-each
-   (λ (package)
-     (system (format "tlmgr install ~a" package)))
-   packages))
+  (system (format "tlmgr install ~a" (string-join packages))))
 
