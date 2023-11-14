@@ -1,7 +1,8 @@
 #lang racket
 
 (provide list-package-names
-         list-not-founds)
+         list-not-founds
+         repo-url)
 
 (require parsack)
 
@@ -78,4 +79,17 @@
 
 (define list-not-founds
   (curry parse-result not-founds-parser))
+
+
+;; ************************************************************************
+;; Parse `tlmgr option repository` output
+;; ************************************************************************
+
+(define repo-url-parser
+  (>> (>> (string "Default package repository (repository):")
+          $spaces)
+      (>>= (many1 (noneOf "\n ")) (compose return list->string))))
+
+(define repo-url
+  (curry parse-result repo-url-parser))
 
