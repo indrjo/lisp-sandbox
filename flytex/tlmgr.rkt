@@ -1,6 +1,8 @@
 #lang racket
 
-(provide tlmgr-list-package-names tlmgr-install)
+(provide tlmgr-list-package-names
+         tlmgr-install
+         contact-package-repo)
 
 (require "run-shell.rkt"
          "parsers.rkt")
@@ -32,4 +34,15 @@
 ;; Install all the packages in a given list.
 (define (tlmgr-install packages)
   (system (format "tlmgr install ~a" (string-join packages))))
+
+
+;; ************************************************************************
+;; See if you can contact the package repository
+;; ************************************************************************
+
+(define (wget-spider url)
+  (system (format "wget -q --spider '~a'" url)))
+
+(define (contact-package-repo)
+  (wget-spider (repo-url (process-output "tlmgr option repository"))))
 
