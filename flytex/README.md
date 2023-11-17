@@ -39,11 +39,3 @@ $ raco exe -o ~/.local/bin/flytex flytex.rkt
 ```
 
 Instead of `~/.local/bin` you can choose any other directory. Just make sure the location you want occurs in `$PATH`. 
-
-
-## Usage
-
-``` sh
-$ flytex some-tex.log 
-```
-
