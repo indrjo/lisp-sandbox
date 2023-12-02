@@ -19,7 +19,7 @@
 ;; In substrings of the form "\npkg-name:\n" extract "pkg-name".
 (define package-name-parser
   (>> (string "\n")
-      (>>= (many (noneOf ":"))
+      (>>= (many1 (noneOf ":"))
            (λ (name)
              (>> (string ":\n")
                  (return (list->string name)))))))
