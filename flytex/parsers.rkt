@@ -16,27 +16,25 @@
 ;; Parse `tlmgr search --global --file` output
 ;; ************************************************************************
 
-;; In substrings of the form "\npkg-name:\n" extract "pkg-name".
+;; In the substrings of the form "\npkg-name:\n" extract "pkg-name".
 (define package-name-parser
-  (>> (string "\n")
-      (>>= (many1 (noneOf ":"))
-           (λ (name)
-             (>> (string ":\n")
-                 (return (list->string name)))))))
+  (between $newline
+           (>> (string ":") $newline)
+           (>>= (many1 (noneOf ":"))
+                (compose return list->string))))
 
 ;; Return the list of the package names using `package-name-parser`.
 (define package-names-parser
   (choice
    (list
-    (>> $eof
-        (return '()))
     (try (>>= package-name-parser
               (λ (name)
                 (>>= package-names-parser
-                     (λ (names)
-                       (return (cons name names)))))))
-    (>>= $anyChar
-         (λ (_) package-names-parser)))))
+                     (λ (others)
+                       (return (cons name others)))))))
+    (try (>>= $anyChar
+              (λ (_) package-names-parser)))
+    (return '()))))
 
 (define list-package-names
   (curry parse-result package-names-parser))
@@ -67,15 +65,14 @@
 (define not-founds-parser
   (choice
    (list
-    (>> $eof
-        (return '()))
     (try (>>= not-found-parser
               (λ (name)
                 (>>= not-founds-parser
                      (λ (others)
                        (return (cons name others)))))))
-    (>>= $anyChar
-         (λ (_) not-founds-parser)))))
+    (try (>>= $anyChar
+              (λ (_) not-founds-parser)))
+    (return '()))))
 
 (define list-not-founds
   (curry parse-result not-founds-parser))
@@ -88,7 +85,8 @@
 (define repo-url-parser
   (>> (>> (string "Default package repository (repository):")
           $spaces)
-      (>>= (many1 (noneOf "\n ")) (compose return list->string))))
+      (>>= (many1 (noneOf "\n "))
+           (compose return list->string))))
 
 (define repo-url
   (curry parse-result repo-url-parser))
