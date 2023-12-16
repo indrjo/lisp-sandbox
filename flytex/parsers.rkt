@@ -12,70 +12,76 @@
 ;; This module defines some parsers that are required by other modules.
 ;;
 
+
+;; ************************************************************************
+;; Helper functions
+;; ************************************************************************
+
+;; While consuming the input string, try a given parser: if it succeeds,
+;; collect the match into a list, otherwise move on by one character.
+(define (list-captures-parser p)
+  (choice
+   (list
+    (try (>>= p
+              (λ (str)
+                (>>= (list-captures-parser p)
+                     (λ (strs)
+                       (return (cons (list->string str) strs)))))))
+    (try (>>= $anyChar
+              (λ (_)
+                (list-captures-parser p))))
+    (return '()))))
+
+;; Observe that the parser above never fails: thus you can always expect
+;; `(parse-result (list-captures-parser p) input)` to return a list and not
+;; throw some kind exception.
+(define (list-captures p input)
+  (parse-result (list-captures-parser p) input))
+
+
 ;; ************************************************************************
 ;; Parse `tlmgr search --global --file` output
 ;; ************************************************************************
 
-;; In the substrings of the form "\npkg-name:\n" extract "pkg-name".
+;; From "\nNAME:\n" extract "NAME".
 (define package-name-parser
   (between $newline
            (>> (string ":") $newline)
-           (>>= (many1 (noneOf ":"))
-                (compose return list->string))))
+           (many1 (noneOf ":"))))
 
-;; Return the list of the package names using `package-name-parser`.
-(define package-names-parser
-  (choice
-   (list
-    (try (>>= package-name-parser
-              (λ (name)
-                (>>= package-names-parser
-                     (λ (others)
-                       (return (cons name others)))))))
-    (try (>>= $anyChar
-              (λ (_) package-names-parser)))
-    (return '()))))
-
-(define list-package-names
-  (curry parse-result package-names-parser))
+;; From the output of `tlmgr search --global --file PATTERN` list the names
+;; the names of the packages that occur.
+(define (list-package-names input)
+  (list-captures package-name-parser input))
 
 
 ;; ************************************************************************
 ;; Parse TeX logs to get the names of the missing files
 ;; ************************************************************************
 
-;; The list of marks used to quote in strings.
 (define quote-marks "'\"`")
 
-;; From a string of the form "<quote-mark>name<quote-mark>" give "name".
 (define quoted-name-parser
   (between (oneOf quote-marks)
            (oneOf quote-marks)
            (many1 (noneOf quote-marks))))
 
-;; From "<quote-mark>file-name<quote-mark> not found", return "file-name".
+;; The fragment between two quotation marks.
 (define not-found-parser
   (>>= quoted-name-parser
        (λ (name)
          (>> (>> $spaces
                  (string "not found"))
-             (return (list->string name))))))
+             (return name)))))
 
-;; List all the files not found by repeatedly applying `not-found-parser`.
-(define not-founds-parser
-  (choice
-   (list
-    (try (>>= not-found-parser
-              (λ (name)
-                (>>= not-founds-parser
-                     (λ (others)
-                       (return (cons name others)))))))
-    (try (>>= $anyChar
-              (λ (_) not-founds-parser)))
-    (return '()))))
-
-(define list-not-founds
-  (curry parse-result not-founds-parser))
+;; Capture the names the missing files from the log of a TeX command. More
+;; precisely, look for pieces of the form
+;;
+;;   "FILE" not found
+;;
+;; and isolate FILE.
+(define (list-not-founds input)
+  (parse-result (list-captures-parser not-found-parser) input))
 
 
 ;; ************************************************************************
