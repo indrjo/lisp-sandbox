@@ -16,7 +16,7 @@
 ;;   Make sure to run flytex within the directory of the file.
 (define (main-program engine texfile)
   ;; Try to compile the main TeX file.
-  (make-tex (tex-engine) texfile)
+  (make-tex engine texfile)
   ;; Now parse the generated log, and install any required package.
   (let* ([logfile (path-replace-extension texfile ".log")]
          [not-founds (list-not-founds logfile)])
