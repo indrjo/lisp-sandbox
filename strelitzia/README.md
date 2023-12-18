@@ -1,4 +1,4 @@
-# Racket flyTeX
+# Strelitzia
 
 Suppose you have installed a *minimal TeX Live* and you want to produce your document via, say,
 
@@ -6,10 +6,10 @@ Suppose you have installed a *minimal TeX Live* and you want to produce your doc
 $ pdflatex main.tex
 ```
 
-It probably won't work owing to missing packages from your TeX Live. It is a work for `flytex`:
+It probably won't work owing to missing packages from your TeX Live. It is a work for `strelitzia`:
 
 ``` sh
-$ flytex main.tex
+$ strelitzia main.tex
 ```
 
 It will try to create the corresponding document: any missing but required package will be installed right away. 
@@ -18,7 +18,7 @@ It will try to create the corresponding document: any missing but required packa
 ## Usage
 
 ``` sh
-$ flytex --engine TEX_ENGINE FILE.tex
+$ strelitzia --engine TEX_ENGINE FILE.tex
 ```
 
 If you omit the part `--engine TEX_ENGINE`, then the program will assume `TEX_ENGINE` being `pdflatex`. Some values for `TEX_ENGINE` are `pdflatex`, `lualatex`, `xelatex` and so on...
@@ -35,7 +35,7 @@ $ raco pkg install parsack
 To install just decide a directory, for example `~/.local/bin`, and use `raco` as follows:
 
 ``` sh
-$ raco exe -o ~/.local/bin/flytex flytex.rkt
+$ raco exe -o ~/.local/bin/strelitzia strelitzia.rkt
 ```
 
 Instead of `~/.local/bin` you can choose any other directory. Just make sure the location you want occurs in `$PATH`. 
