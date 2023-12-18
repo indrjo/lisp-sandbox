@@ -13,11 +13,10 @@
 ;;   write the TeX engine with the full path to it. 
 ;;
 ;; * The latter is the name of the TeX file to be given to the TeX engine.
-;;   Make sure to run flytex within the directory of the file.
+;;   Make sure to run strelitzia within the directory of the file.
+;;
 (define (main-program engine texfile)
-  ;; Try to compile the main TeX file.
   (make-tex engine texfile)
-  ;; Now parse the generated log, and install any required package.
   (let* ([logfile (path-replace-extension texfile ".log")]
          [not-founds (list-not-founds logfile)])
     (if (empty? not-founds)
@@ -28,7 +27,7 @@
           (if (contact-package-repo)
               (let ([packages (tlmgr-list-package-names not-founds)])
                 (begin
-                  (say (format "packages to install: ~a"
+                  (say (format "packages to be installed: ~a"
                                (string-join packages)))
                   (unless (tlmgr-install packages)
                     (say-error "some packages not installed!"))))
@@ -39,11 +38,11 @@
 (define tex-engine (make-parameter "pdflatex"))
 
 (command-line
- #:program "flytex"
+ #:program "strelitzia"
  #:once-each
  [("--engine" "-e")
   this-instead
-  "Choose a TeX engine to be used [default: pdflatex]"
+  "Choose a TeX engine [default: pdflatex]"
   (tex-engine this-instead)]
  #:args (texfile)
  (main-program (tex-engine) texfile))
