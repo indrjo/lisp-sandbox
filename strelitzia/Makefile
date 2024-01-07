@@ -1,4 +1,4 @@
-.PHONY = clean
+.PHONY = clean uninstall
 .RECIPEPREFIX = >
 
 INSTALL_DIR = $(HOME)/.local/bin
@@ -8,5 +8,7 @@ $(STRELITZIA): main.rkt parsers.rkt run-shell.rkt say.rkt tlmgr.rkt
 > raco exe -o $(STRELITZIA) $<
 
 clean:
-> rm $(STRELITZIA)
+> rm -fr compiled
 
+uninstall:
+> rm $(STRELITZIA)
