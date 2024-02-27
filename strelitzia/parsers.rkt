@@ -2,7 +2,7 @@
 
 (provide list-package-names
          list-not-founds
-         repo-url)
+         extract-repo-url)
 
 (require parsack)
 
@@ -20,21 +20,20 @@
 ;; While consuming the input string, try a given parser: if it succeeds,
 ;; collect the match into a list, otherwise move on by one character.
 (define (list-captures-parser p)
-  (choice
-   (list
-    (try (>>= p
-              (λ (str)
-                (>>= (list-captures-parser p)
-                     (λ (strs)
-                       (return (cons (list->string str) strs)))))))
-    (try (>>= $anyChar
-              (λ (_)
-                (list-captures-parser p))))
-    (return '()))))
+  (<or>
+   (try (>>= p
+             (λ (str)
+               (>>= (list-captures-parser p)
+                    (λ (strs)
+                      (return (cons (list->string str) strs)))))))
+   (try (>>= $anyChar
+             (λ (_)
+               (list-captures-parser p))))
+   (return '())))
 
 ;; Observe that the parser above never fails: thus you can always expect
 ;; `(parse-result (list-captures-parser p) input)` to return a list and not
-;; throw some kind exception.
+;; throw an exception.
 (define (list-captures p input)
   (parse-result (list-captures-parser p) input))
 
@@ -94,6 +93,9 @@
       (>>= (many1 (noneOf "\n "))
            (compose return list->string))))
 
-(define repo-url
-  (curry parse-result repo-url-parser))
+;; Try to parse the output of `tlmgr option repository`. If success, then
+;; return the url, otherwise return #f.
+(define (extract-repo-url input)
+  (with-handlers ([exn:fail:parsack? (λ (_) #f)])
+    (parse-result repo-url-parser input)))
 

@@ -5,7 +5,8 @@
          contact-package-repo)
 
 (require "run-shell.rkt"
-         "parsers.rkt")
+         "parsers.rkt"
+         "say.rkt")
 
 ;;
 ;; DESCRIPTION
@@ -31,7 +32,7 @@
 ;; Install packages
 ;; ************************************************************************
 
-;; Install all the packages in a given list.
+;; Install all the packages in a given list of package names.
 (define (tlmgr-install packages)
   (system (format "tlmgr install ~a" (string-join packages))))
 
@@ -40,9 +41,22 @@
 ;; See if you can contact the package repository
 ;; ************************************************************************
 
+;; Get the repository tlmgr interrogates for packages. If for some reason
+;; this happens to fail, return #f.
+(define (tlmgr-repo-url)
+  (extract-repo-url (process-output "tlmgr option repository")))
+
+;; A wrapper function for the shell command `wget -q --spider URL`.
 (define (wget-spider url)
   (system (format "wget -q --spider '~a'" url)))
 
+;; Attempt to contact the repo determined by the function above.
 (define (contact-package-repo)
-  (wget-spider (repo-url (process-output "tlmgr option repository"))))
+  (let ([url (tlmgr-repo-url)])
+    (if (string? url)
+        (wget-spider url)
+        (begin
+          ;; Just in case... who knows?
+          (say-error "contact-package-repo: error during the parsing")
+          #f))))
 
