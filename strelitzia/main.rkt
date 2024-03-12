@@ -5,6 +5,18 @@
          "parsers.rkt"
          "tlmgr.rkt")
 
+;; The argument is the file where you have written your \documentclass and
+;; \usepackage's, etc etc etc. The function will install the packages whose
+;; names are listed as arguments of the *import* keywords.
+(define (check-imports imports-file)
+  (let ([packages (list-imports (string->path imports-file))])
+    (say (format "required packages: ~a" (string-join packages)))
+    (tlmgr-install packages)))
+
+;; By default, no preamble file assigned: the function `check-requires` is
+;; not invoked unless you want to do so.
+(define imports-file (make-parameter #f))
+
 ;; The main program is a function that accepts two arguments:
 ;;
 ;; * The former argument is a string containing the name of the TeX engine
@@ -27,10 +39,13 @@
           (if (contact-package-repo)
               (let ([packages (tlmgr-list-package-names not-founds)])
                 (begin
-                  (say (format "packages to be installed: ~a"
-                               (string-join packages)))
-                  (unless (tlmgr-install packages)
-                    (say-error "some packages not installed!"))))
+                  (if (empty? packages)
+                      (say "no packages to install!")
+                      (begin
+                        (say (format "packages to be installed: ~a"
+                                     (string-join packages)))
+                        (unless (tlmgr-install packages)
+                          (say-error "some packages not installed!"))))))
               (say-error "cannot contact the package repo!"))))))
 
 ;; The TeX engine. It defaults to pdflatex; you can modify it with
@@ -40,10 +55,17 @@
 (command-line
  #:program "strelitzia"
  #:once-each
+ [("--check-imports" "-c")
+  this-file
+  "Indicate the file of \\documentclass, \\usepackage's, etc..."
+  (imports-file this-file)]
  [("--engine" "-e")
-  this-instead
+  this-engine
   "Choose a TeX engine [default: pdflatex]"
-  (tex-engine this-instead)]
+  (tex-engine this-engine)]
  #:args (texfile)
- (main-program (tex-engine) texfile))
+ (begin
+   (when (imports-file)
+     (check-imports (imports-file)))
+   (main-program (tex-engine) texfile)))
 

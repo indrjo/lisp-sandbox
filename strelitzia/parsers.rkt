@@ -2,7 +2,8 @@
 
 (provide list-package-names
          list-not-founds
-         extract-repo-url)
+         extract-repo-url
+         list-imports)
 
 (require parsack)
 
@@ -12,30 +13,40 @@
 ;; This module defines some parsers that are required by other modules.
 ;;
 
+#|
+;; Because Racket is not lazy as Haskell is, one cannot use `>>` as if they
+;; were in a lazy semantics. Of course, that is not the unique difference,
+;; but it is the one that affaects our work here. 
+(define-syntax-rule (>> f1 f2)
+  (>>= f1 (λ (_) f2)))
+;; In the parsack module, `>>` is *defined*, not a syntactic element.
+|#
 
 ;; ************************************************************************
 ;; Helper functions
 ;; ************************************************************************
 
 ;; While consuming the input string, try a given parser: if it succeeds,
-;; collect the match into a list, otherwise move on by one character.
-(define (list-captures-parser p)
+;; collect the match into a list, otherwise move on by one character. The
+;; second argument of the function is a binary function used to "chain" in
+;; some manner the results of the applied parser. (Below, f will be either
+;; `cons` or `append`...)
+(define (fold-captures-parser p f)
   (<or>
    (try (>>= p
-             (λ (str)
-               (>>= (list-captures-parser p)
-                    (λ (strs)
-                      (return (cons (list->string str) strs)))))))
+             (λ (a)
+               (>>= (fold-captures-parser p f)
+                    (λ (as)
+                      (return (f a as)))))))
    (try (>>= $anyChar
              (λ (_)
-               (list-captures-parser p))))
+               (fold-captures-parser p f))))
    (return '())))
 
 ;; Observe that the parser above never fails: thus you can always expect
-;; `(parse-result (list-captures-parser p) input)` to return a list and not
-;; throw an exception.
-(define (list-captures p input)
-  (parse-result (list-captures-parser p) input))
+;; the following function to not throw an exception.
+(define (fold-captures p f input)
+  (parse-result (fold-captures-parser p f) input))
 
 
 ;; ************************************************************************
@@ -46,12 +57,13 @@
 (define package-name-parser
   (between $newline
            (>> (string ":") $newline)
-           (many1 (noneOf ":"))))
+           (>>= (many1 (noneOf ":"))
+                (compose return list->string))))
 
 ;; From the output of `tlmgr search --global --file PATTERN` list the names
 ;; the names of the packages that occur.
 (define (list-package-names input)
-  (list-captures package-name-parser input))
+  (fold-captures package-name-parser cons input))
 
 
 ;; ************************************************************************
@@ -63,7 +75,8 @@
 (define quoted-name-parser
   (between (oneOf quote-marks)
            (oneOf quote-marks)
-           (many1 (noneOf quote-marks))))
+           (>>= (many1 (noneOf quote-marks))
+                (compose return list->string))))
 
 ;; The fragment between two quotation marks.
 (define not-found-parser
@@ -80,7 +93,7 @@
 ;;
 ;; and isolate FILE.
 (define (list-not-founds input)
-  (parse-result (list-captures-parser not-found-parser) input))
+  (parse-result (fold-captures-parser not-found-parser cons) input))
 
 
 ;; ************************************************************************
@@ -98,4 +111,38 @@
 (define (extract-repo-url input)
   (with-handlers ([exn:fail:parsack? (λ (_) #f)])
     (parse-result repo-url-parser input)))
+
+
+;; ************************************************************************
+;; Parse TeX preambles to get the list of packages required in a project.
+;; ************************************************************************
+
+(define import-keyword-parser
+  (oneOfStrings "\\documentclass"
+                "\\usepackage"
+                "\\requirepackage"))
+
+(define square-parser
+  (between (string "[")
+           (string "]")
+           (many (noneOf "]"))))
+
+(define single-word-parser
+  (between $spaces
+           $spaces
+           (>>= (many1 $alphaNum)
+                (compose return list->string))))
+
+(define commas-parser
+  (sepBy single-word-parser (string ",")))
+
+(define import-parser
+  (>> (>> import-keyword-parser $spaces)
+      (>> (>> (optional square-parser) $spaces)
+          (between (string "{")
+                   (string "}")
+                   commas-parser))))
+
+(define (list-imports input)
+  (parse-result (fold-captures-parser import-parser append) input))
 
